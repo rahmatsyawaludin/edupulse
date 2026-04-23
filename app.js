@@ -500,30 +500,4 @@ function App() {
               h('span', { className: 'sp-val'   }, s.val)
             ),
             ProgressBar({ pct: Math.min(s.pct, 100), color: s.color }),
-            h('div', { style: { marginBottom: 10 } })
-          )
-        ),
-        h('div', { style: { fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 } }, "Badges"),
-        h('div', { className: 'badge-row' },
-          BADGES.map((b, i) =>
-            h('span', {
-              key: i,
-              className: 'badge-item' + (b.unlocked ? '' : ' locked'),
-              title: b.label,
-            }, b.emoji)
-          )
-        )
-      )
-    ),
-
-    /* Main content */
-    h('main', { className: 'main' },
-      page === 'dashboard' && h(Dashboard,     { courses, totalXp, quizResults }),
-      page === 'courses'   && h(CourseLibrary, { courses, setCourses, setTotalXp }),
-      page === 'quiz'      && h(QuizEngine,    { setTotalXp, quizResults, setQuizResults }),
-    )
-  );
-}
-
-/* ── Mount ───────────────────────────────────────────────────────── */
-ReactDOM.createRoot(document.getElementById('root')).render(h(App, null));
+            h('div', { style: { marginBottom: 10 } }
