@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduPulse — Interactive Learning Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base:       #0d1117;
+      --bg-surface:    #161c26;
+      --bg-card:       #1c2433;
+      --bg-hover:      #232e40;
+      --accent-amber:  #f5a623;
+      --accent-amber2: #e8922a;
+      --accent-teal:   #38bfbf;
+      --accent-rose:   #e06c75;
+      --accent-green:  #52c99b;
+      --text-primary:  #e8edf5;
+      --text-secondary:#8a97b0;
+      --text-muted:    #4a5568;
+      --border:        #1e2d42;
+      --border-light:  #2a3a52;
+      --radius:        12px;
+      --radius-lg:     18px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+
+    /* Layout */
+    .app-shell {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      grid-template-rows: 64px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Top bar */
+    .topbar {
+      grid-column: 1 / -1;
+      background: rgba(13,17,23,0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px;
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    .topbar-brand {
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .brand-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent-amber), var(--accent-amber2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px; font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }
+
+    .brand-name span { color: var(--accent-amber); }
+
+    .topbar-right {
+      display: flex; align-items: center; gap: 16px;
+    }
+
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #2a5298, #3d7bd4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600; color: white;
+      border: 2px solid var(--border-light);
+      cursor: pointer;
+    }
+
+    .xp-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px; font-weight: 600;
+      color: var(--accent-amber);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      overflow-y: auto;
+      position: sticky; top: 64px;
+      height: calc(100vh - 64px);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 12px 12px 4px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      font-size: 14px; font-weight: 500;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+      background: none;
+      width: 100%; text-align: left;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: rgba(245,166,35,0.1);
+      color: var(--accent-amber);
+      border-color: rgba(245,166,35,0.2);
+    }
+
+    .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--accent-amber);
+      color: #000;
+      font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 10px;
+    }
+
+    /* Progress card in sidebar */
+    .progress-card {
+      margin-top: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .progress-card-title {
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .stat-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .stat-label { font-size: 13px; color: var(--text-secondary); }
+
+    .stat-bar-wrap {
+      width: 120px; height: 6px;
+      background: var(--border);
+      border-radius: 3px; overflow: hidden;
+    }
+
+    .stat-bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; color: var(--text-secondary);
+      min-width: 28px; text-align: right;
+    }
+
+    .badge-row {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+    }
+
+    .badge {
+      font-size: 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 4px 7px;
+      cursor: default;
+      transition: transform 0.15s;
+    }
+
+    .badge:hover { transform: scale(1.2); }
+    .badge.locked { filter: grayscale(1) opacity(0.3); }
+
+    /* Main content */
+    .main-content {
+      padding: 32px 36px;
+      overflow-y: auto;
+      height: calc(100vh - 64px);
+    }
+
+    .page-header {
+      margin-bottom: 28px;
+    }
+
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px; font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+    }
+
+    .page-sub {
+      font-size: 14px; color: var(--text-secondary);
+      margin-top: 6px;
+    }
+
+    /* Search + filter bar */
+    .filter-bar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px; flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      flex: 1; min-width: 200px;
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted); font-size: 14px;
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 10px 12px 10px 36px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input::placeholder { color: var(--text-muted); }
+    .search-input:focus { border-color: var(--accent-amber); }
+
+    .filter-chip {
+      padding: 8px 16px; border-radius: 20px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      font-size: 13px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .filter-chip:hover { border-color: var(--accent-amber); color: var(--text-primary); }
+    .filter-chip.active {
+      background: rgba(245,166,35,0.12);
+      border-color: var(--accent-amber);
+      color: var(--accent-amber);
+    }
+
+    /* Course grid */
+    .course-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .course-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .course-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      border-color: var(--border-light);
+    }
+
+    .course-card-banner {
+      height: 120px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 42px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .course-card-banner::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 40%, rgba(28,36,51,0.8));
+    }
+
+    .course-card-body { padding: 16px; }
+
+    .course-tag {
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.2px;
+      padding: 3px 8px; border-radius: 6px;
+      display: inline-block; margin-bottom: 8px;
+    }
+
+    .course-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px; font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .course-desc {
+      font-size: 12px; color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .course-meta {
+      display: flex; gap: 12px; align-items: center;
+    }
+
+    .meta-item {
+      font-size: 11px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    .course-progress-bar {
+      height: 3px; background: var(--border);
+      border-radius: 2px; margin-top: 12px; overflow: hidden;
+    }
+
+    .course-progress-fill {
+      height: 100%; border-radius: 2px;
+      transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .enroll-btn {
+      margin-top: 12px;
+      width: 100%;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .enroll-btn.enrolled {
+      background: rgba(82,201,155,0.12);
+      color: var(--accent-green);
+      border: 1px solid rgba(82,201,155,0.2);
+    }
+
+    .enroll-btn.not-enrolled {
+      background: rgba(245,166,35,0.12);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245,166,35,0.25);
+    }
+
+    .enroll-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+    /* Quiz engine */
+    .quiz-wrap {
+      max-width: 680px;
+      animation: fadeUp 0.3s ease;
+    }
+
+    .quiz-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .quiz-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .quiz-topic {
+      font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--accent-teal);
+    }
+
+    .quiz-progress-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; color: var(--text-secondary);
+    }
+
+    .quiz-progress-track {
+      height: 4px; background: var(--border);
+      border-radius: 2px; overflow: hidden;
+    }
+
+    .quiz-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-teal), #5ce0a4);
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    .question-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      margin-bottom: 16px;
+      animation: fadeUp 0.25s ease;
+    }
+
+    .question-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 19px; line-height: 1.5;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+    }
+
+    .option-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .option-btn {
+      width: 100%; text-align: left;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex; align-items: center; gap: 12px;
+    }
+
+    .option-btn:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--accent-amber);
+      color: var(--text-primary);
+    }
+
+    .option-btn:disabled { cursor: default; }
+
+    .option-btn.selected-correct {
+      background: rgba(82,201,155,0.12);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .option-btn.selected-wrong {
+      background: rgba(224,108,117,0.12);
+      border-color: var(--accent-rose);
+      color: var(--accent-rose);
+    }
+
+    .option-btn.show-correct {
+      background: rgba(82,201,155,0.08);
+      border-color: rgba(82,201,155,0.3);
+      color: var(--accent-green);
+    }
+
+    .option-letter {
+      width: 26px; height: 26px; border-radius: 7px;
+      background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .feedback-box {
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-size: 14px; line-height: 1.5;
+      animation: fadeUp 0.2s ease;
+    }
+
+    .feedback-box.correct {
+      background: rgba(82,201,155,0.1);
+      border: 1px solid rgba(82,201,155,0.2);
+      color: var(--accent-green);
+    }
+
+    .feedback-box.wrong {
+      background: rgba(224,108,117,0.1);
+      border: 1px solid rgba(224,108,117,0.2);
+      color: var(--accent-rose);
+    }
+
+    .next-btn {
+      background: linear-gradient(135deg, var(--accent-amber), var(--accent-amber2));
+      color: #0d1117;
+      border: none; border-radius: 10px;
+      padding: 12px 28px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+
+    .next-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(245,166,35,0.3); }
+
+    /* Results screen */
+    .results-screen {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      text-align: center;
+      animation: fadeUp 0.4s ease;
+    }
+
+    .score-ring {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      margin: 0 auto 24px;
+      border: 4px solid var(--border);
+      position: relative;
+    }
+
+    .score-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px; font-weight: 700;
+    }
+
+    .score-label { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+
+    .results-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px; margin-bottom: 8px;
+    }
+
+    .results-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 28px; }
+
+    .results-breakdown {
+      display: flex; gap: 20px; justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .rb-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 20px;
+      text-align: center;
+    }
+
+    .rb-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px; font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .rb-key { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+
+    /* Dashboard */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .stat-card-icon {
+      font-size: 24px; margin-bottom: 10px;
+    }
+
+    .stat-card-val {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px; font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-card-key { font-size: 13px; color: var(--text-secondary); }
+
+    .activity-feed {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      animation: fadeUp 0.35s ease both;
+    }
+
+    .feed-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; margin-bottom: 16px;
+    }
+
+    .feed-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feed-item:last-child { border-bottom: none; }
+
+    .feed-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      margin-top: 6px; flex-shrink: 0;
+    }
+
+    .feed-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .feed-text strong { color: var(--text-primary); font-weight: 500; }
+    .feed-time { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main-content { padding: 20px 16px; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .course-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state-text { font-size: 14px; }
+
+    /* Tooltip-like tag colors */
+    .tag-design { background: rgba(56,191,191,0.12); color: var(--accent-teal); }
+    .tag-tech   { background: rgba(245,166,35,0.12); color: var(--accent-amber); }
+    .tag-data   { background: rgba(82,201,155,0.12); color: var(--accent-green); }
+    .tag-lead   { background: rgba(224,108,117,0.12); color: var(--accent-rose); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+/* ─── DATA ─────────────────────────────────────────── */
+const COURSES = [
+  {
+    id: 1, emoji: "🎨", color: "linear-gradient(135deg,#1a3a4a,#0d2535)",
+    tag: "design", tagLabel: "Design",
+    title: "Instructional Design Fundamentals",
+    desc: "ADDIE, SAM, Backward Design — build learning experiences that stick.",
+    lessons: 12, duration: "6h 30m", level: "Beginner",
+    progress: 75, enrolled: true, xp: 120,
+  },
+  {
+    id: 2, emoji: "🤖", color: "linear-gradient(135deg,#1a2a1a,#0d1f0d)",
+    tag: "tech", tagLabel: "Technology",
+    title: "AR & Immersive Learning Media",
+    desc: "Design marker-based AR modules for offline-first learning environments.",
+    lessons: 8, duration: "4h 15m", level: "Intermediate",
+    progress: 40, enrolled: true, xp: 90,
+  },
+  {
+    id: 3, emoji: "📊", color: "linear-gradient(135deg,#2a1a0d,#1a0d00)",
+    tag: "data", tagLabel: "Data",
+    title: "Digital Data in Education",
+    desc: "Leverage learning analytics and dashboards to drive instructional decisions.",
+    lessons: 10, duration: "5h 00m", level: "Intermediate",
+    progress: 20, enrolled: true, xp: 60,
+  },
+  {
+    id: 4, emoji: "🧭", color: "linear-gradient(135deg,#1a0d2a,#0d0017)",
+    tag: "lead", tagLabel: "Leadership",
+    title: "Leading Educational Technology Change",
+    desc: "Navigate organizational change and champion digital transformation in education.",
+    lessons: 9, duration: "4h 45m", level: "Advanced",
+    progress: 0, enrolled: false, xp: 110,
+  },
+  {
+    id: 5, emoji: "💡", color: "linear-gradient(135deg,#0d1a2a,#061020)",
+    tag: "design", tagLabel: "Design",
+    title: "Design Thinking for L&D",
+    desc: "Apply Stanford D.school & Double Diamond frameworks to solve learning problems.",
+    lessons: 11, duration: "5h 30m", level: "Intermediate",
+    progress: 100, enrolled: true, xp: 130,
+  },
+  {
+    id: 6, emoji: "☁️", color: "linear-gradient(135deg,#0a1a1a,#041010)",
+    tag: "tech", tagLabel: "Technology",
+    title: "LMS Administration & Analytics",
+    desc: "Set up, manage, and optimise Canvas & Google Classroom for real outcomes.",
+    lessons: 7, duration: "3h 20m", level: "Beginner",
+    progress: 0, enrolled: false, xp: 70,
+  },
+];
+
+const QUIZ_QUESTIONS = [
+  {
+    id: 1,
+    topic: "Instructional Design",
+    question: "Which ADDIE phase involves identifying the gap between current and desired performance?",
+    options: ["Design", "Analysis", "Development", "Evaluation"],
+    correct: 1,
+    explanation: "The Analysis phase is where you conduct a Training Needs Analysis (TNA) to identify performance gaps, learner characteristics, and context before any design begins."
+  },
+  {
+    id: 2,
+    topic: "Learning Science",
+    question: "What principle does the 'desirable difficulty' concept refer to?",
+    options: [
+      "Making content visually complex",
+      "Introducing productive struggle to deepen retention",
+      "Increasing quiz frequency to reduce anxiety",
+      "Simplifying navigation to reduce cognitive load"
+    ],
+    correct: 1,
+    explanation: "Desirable difficulties (Bjork, 1994) are learning conditions that slow initial acquisition but significantly enhance long-term retention — e.g., spaced practice, interleaving, and retrieval practice."
+  },
+  {
+    id: 3,
+    topic: "Digital Learning",
+    question: "In Backward Design (Wiggins & McTighe), what is the correct sequence?",
+    options: [
+      "Content → Activities → Assessment",
+      "Objectives → Content → Activities",
+      "Desired Results → Evidence → Learning Plan",
+      "Needs Analysis → Design → Deployment"
+    ],
+    correct: 2,
+    explanation: "Backward Design starts with desired learning outcomes, then identifies acceptable evidence of achievement, and finally plans learning experiences — the opposite of traditional 'coverage-first' design."
+  },
+  {
+    id: 4,
+    topic: "Computational Thinking",
+    question: "Which CT skill involves identifying similarities and patterns across different problems?",
+    options: ["Decomposition", "Abstraction", "Pattern Recognition", "Algorithm Design"],
+    correct: 2,
+    explanation: "Pattern Recognition is the CT skill of finding similarities, patterns, and trends across problems — allowing us to apply known solutions to new, similar challenges."
+  },
+  {
+    id: 5,
+    topic: "Instructional Design",
+    question: "What does 'fidelity' refer to in prototype testing?",
+    options: [
+      "Accuracy of color choices",
+      "The degree of completeness and realism of a prototype",
+      "Number of user testers involved",
+      "Alignment with brand guidelines"
+    ],
+    correct: 1,
+    explanation: "Fidelity describes how closely a prototype represents the final product — low-fidelity (sketches, paper) for early ideation, high-fidelity (interactive mockups) for detailed validation."
+  },
+];
+
+const BADGES = [
+  { emoji: "🏅", label: "First Lesson", unlocked: true },
+  { emoji: "🔥", label: "3-Day Streak", unlocked: true },
+  { emoji: "🎓", label: "Course Complete", unlocked: true },
+  { emoji: "⚡", label: "Quiz Master", unlocked: false },
+  { emoji: "🌟", label: "Top Scorer", unlocked: false },
+  { emoji: "🚀", label: "All Enrolled", unlocked: false },
+];
+
+const ACTIVITY = [
+  { color: "#52c99b", text: <><strong>Completed</strong> Design Thinking for L&D — 100% ✓</>, time: "2h ago" },
+  { color: "#f5a623", text: <><strong>Scored 4/5</strong> on Instructional Design Quiz</>, time: "Yesterday" },
+  { color: "#38bfbf", text: <><strong>Started</strong> AR & Immersive Learning Media</>, time: "2 days ago" },
+  { color: "#e06c75", text: <><strong>Earned badge</strong> 🔥 3-Day Streak</>, time: "3 days ago" },
+  { color: "#52c99b", text: <><strong>Enrolled in</strong> Digital Data in Education</>, time: "4 days ago" },
+];
+
+/* ─── COMPONENTS ────────────────────────────────────── */
+
+function ProgressBar({ value, color, height = 6 }) {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setWidth(value), 100);
+    return () => clearTimeout(t);
+  }, [value]);
+  return (
+    <div style={{ height, background: 'var(--border)', borderRadius: height/2, overflow:'hidden' }}>
+      <div style={{ width: `${width}%`, height:'100%', background: color, borderRadius: height/2, transition:'width 0.8s cubic-bezier(0.4,0,0.2,1)' }} />
+    </div>
+  );
+}
+
+function CourseCard({ course, onEnroll }) {
+  const tagClass = `course-tag tag-${course.tag}`;
+  return (
+    <div className="course-card" style={{ animationDelay: `${(course.id-1)*0.05}s` }}>
+      <div className="course-card-banner" style={{ background: course.color }}>
+        <span style={{ position:'relative', zIndex:1 }}>{course.emoji}</span>
+      </div>
+      <div className="course-card-body">
+        <span className={tagClass}>{course.tagLabel}</span>
+        <div className="course-title">{course.title}</div>
+        <div className="course-desc">{course.desc}</div>
+        <div className="course-meta">
+          <span className="meta-item">📚 {course.lessons} lessons</span>
+          <span className="meta-item">⏱ {course.duration}</span>
+          <span className="meta-item">📈 {course.level}</span>
+        </div>
+        {course.enrolled && (
+          <>
+            <ProgressBar value={course.progress} color={course.progress===100?"var(--accent-green)":"var(--accent-amber)"} />
+            <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
+              <span style={{ fontSize:11, color:'var(--text-muted)', fontFamily:'JetBrains Mono,monospace' }}>{course.progress}% complete</span>
+              <span style={{ fontSize:11, color:'var(--accent-amber)', fontFamily:'JetBrains Mono,monospace' }}>+{course.xp} XP</span>
+            </div>
+          </>
+        )}
+        <button
+          className={`enroll-btn ${course.enrolled ? 'enrolled' : 'not-enrolled'}`}
+          onClick={() => !course.enrolled && onEnroll(course.id)}
+        >
+          {course.enrolled ? (course.progress===100 ? '✓ Completed' : '▶ Continue') : '+ Enroll Now'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CourseLibrary({ courses, setCourses, setTotalXp }) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  const filtered = useMemo(() => {
+    return courses.filter(c => {
+      const matchSearch = c.title.toLowerCase().includes(search.toLowerCase()) ||
+        c.desc.toLowerCase().includes(search.toLowerCase());
+      const matchFilter = filter === 'all' ? true :
+        filter === 'enrolled' ? c.enrolled :
+        filter === 'completed' ? c.progress === 100 : c.tag === filter;
+      return matchSearch && matchFilter;
+    });
+  }, [courses, search, filter]);
+
+  const handleEnroll = (id) => {
+    setCourses(prev => prev.map(c => c.id===id ? {...c, enrolled:true} : c));
+    setTotalXp(prev => prev + 15);
+  };
+
+  const filters = [
+    {id:'all', label:'All Courses'},
+    {id:'enrolled', label:'Enrolled'},
+    {id:'completed', label:'Completed'},
+    {id:'design', label:'Design'},
+    {id:'tech', label:'Technology'},
+    {id:'data', label:'Data'},
+  ];
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-title">Course Library</div>
+        <div className="page-sub">{courses.filter(c=>c.enrolled).length} enrolled · {courses.filter(c=>c.progress===100).length} completed</div>
+      </div>
+      <div className="filter-bar">
+        <div className="search-wrap">
+          <span className="search-icon">🔍</span>
+          <input
+            className="search-input"
+            placeholder="Search courses..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        {filters.map(f => (
+          <button key={f.id} className={`filter-chip ${filter===f.id?'active':''}`} onClick={()=>setFilter(f.id)}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">🔎</div>
+          <div className="empty-state-text">No courses match your search.</div>
+        </div>
+      ) : (
+        <div className="course-grid">
+          {filtered.map(c => <CourseCard key={c.id} course={c} onEnroll={handleEnroll} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuizEngine({ setTotalXp, quizResults, setQuizResults }) {
+  const [qIndex, setQIndex] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [phase, setPhase] = useState('quiz'); // 'quiz' | 'results'
+
+  const restart = () => {
+    setQIndex(0); setSelected(null);
+    setAnswers([]); setPhase('quiz');
+  };
+
+  const q = QUIZ_QUESTIONS[qIndex];
+  const answered = selected !== null;
+  const isCorrect = selected === q.correct;
+
+  const handleSelect = (i) => {
+    if (answered) return;
+    setSelected(i);
+  };
+
+  const handleNext = () => {
+    const newAnswers = [...answers, { qid: q.id, correct: isCorrect }];
+    setAnswers(newAnswers);
+
+    if (qIndex < QUIZ_QUESTIONS.length - 1) {
+      setQIndex(qIndex + 1);
+      setSelected(null);
+    } else {
+      const score = newAnswers.filter(a=>a.correct).length;
+      setPhase('results');
+      setQuizResults({ score, total: QUIZ_QUESTIONS.length, answers: newAnswers });
+      setTotalXp(prev => prev + score * 20);
+    }
+  };
+
+  if (phase === 'results') {
+    const pct = Math.round((quizResults.score / quizResults.total) * 100);
+    const grade = pct >= 80 ? {label:'Excellent!', color:'var(--accent-green)'} :
+                  pct >= 60 ? {label:'Good Work', color:'var(--accent-amber)'} :
+                  {label:'Keep Practicing', color:'var(--accent-rose)'};
+    return (
+      <div className="quiz-wrap">
+        <div className="page-header">
+          <div className="page-title">Quiz Results</div>
+        </div>
+        <div className="results-screen">
+          <div className="score-ring" style={{ borderColor: grade.color }}>
+            <span className="score-number" style={{ color: grade.color }}>{pct}%</span>
+            <span className="score-label">SCORE</span>
+          </div>
+          <div className="results-title">{grade.label}</div>
+          <div className="results-sub">You answered {quizResults.score} out of {quizResults.total} questions correctly</div>
+          <div className="results-breakdown">
+            <div className="rb-item">
+              <div className="rb-val" style={{ color:'var(--accent-green)' }}>{quizResults.score}</div>
+              <div className="rb-key">Correct</div>
+            </div>
+            <div className="rb-item">
+              <div className="rb-val" style={{ color:'var(--accent-rose)' }}>{quizResults.total-quizResults.score}</div>
+              <div className="rb-key">Incorrect</div>
+            </div>
+            <div className="rb-item">
+              <div className="rb-val" style={{ color:'var(--accent-amber)' }}>+{quizResults.score*20} XP</div>
+              <div className="rb-key">Earned</div>
+            </div>
+          </div>
+          <button className="next-btn" onClick={restart}>Retake Quiz</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="quiz-wrap">
+      <div className="page-header">
+        <div className="page-title">Knowledge Quiz</div>
+        <div className="page-sub">Instructional Design & Learning Science</div>
+      </div>
+      <div className="quiz-header">
+        <div className="quiz-meta">
+          <span className="quiz-topic">{q.topic}</span>
+          <span className="quiz-progress-text">{qIndex+1} / {QUIZ_QUESTIONS.length}</span>
+        </div>
+        <ProgressBar value={((qIndex)/QUIZ_QUESTIONS.length)*100} color="var(--accent-teal)" height={4} />
+      </div>
+      <div className="question-card">
+        <div className="question-text">{q.question}</div>
+        <div className="option-list">
+          {q.options.map((opt, i) => {
+            let cls = 'option-btn';
+            if (answered) {
+              if (i === q.correct) cls += ' show-correct';
+              if (i === selected && !isCorrect) cls += ' selected-wrong';
+              if (i === selected && isCorrect) cls += ' selected-correct';
+            }
+            return (
+              <button key={i} className={cls} onClick={()=>handleSelect(i)} disabled={answered}>
+                <span className="option-letter">{String.fromCharCode(65+i)}</span>
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {answered && (
+        <div className={`feedback-box ${isCorrect?'correct':'wrong'}`}>
+          {isCorrect ? '✓ Correct! ' : '✗ Not quite. '}{q.explanation}
+        </div>
+      )}
+      {answered && (
+        <button className="next-btn" onClick={handleNext}>
+          {qIndex < QUIZ_QUESTIONS.length-1 ? 'Next Question →' : 'See Results'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Dashboard({ courses, totalXp, quizResults }) {
+  const enrolled = courses.filter(c=>c.enrolled).length;
+  const completed = courses.filter(c=>c.progress===100).length;
+  const avgProgress = Math.round(courses.filter(c=>c.enrolled).reduce((s,c)=>s+c.progress,0) / Math.max(enrolled,1));
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-title">My Dashboard</div>
+        <div className="page-sub">Your learning journey at a glance</div>
+      </div>
+      <div className="dashboard-grid">
+        {[
+          { icon:"⚡", val: totalXp, key:"Total XP", color:"var(--accent-amber)" },
+          { icon:"📚", val: enrolled, key:"Enrolled", color:"var(--accent-teal)" },
+          { icon:"✅", val: completed, key:"Completed", color:"var(--accent-green)" },
+          { icon:"📈", val: `${avgProgress}%`, key:"Avg Progress", color:"var(--accent-rose)" },
+        ].map((s,i) => (
+          <div className="stat-card" key={i} style={{ animationDelay:`${i*0.07}s` }}>
+            <div className="stat-card-icon">{s.icon}</div>
+            <div className="stat-card-val" style={{ color: s.color }}>{s.val}</div>
+            <div className="stat-card-key">{s.key}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="activity-feed" style={{ marginBottom:20 }}>
+        <div className="feed-title">Recent Activity</div>
+        {ACTIVITY.map((a,i) => (
+          <div className="feed-item" key={i}>
+            <div className="feed-dot" style={{ background: a.color }} />
+            <div>
+              <div className="feed-text">{a.text}</div>
+              <div className="feed-time">{a.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {quizResults && (
+        <div className="activity-feed">
+          <div className="feed-title">Last Quiz Performance</div>
+          <div style={{ display:'flex', gap:12, marginTop:8, flexWrap:'wrap' }}>
+            {QUIZ_QUESTIONS.map((q,i) => {
+              const ans = quizResults.answers[i];
+              return (
+                <div key={i} style={{
+                  background: ans?.correct ? 'rgba(82,201,155,0.12)' : 'rgba(224,108,117,0.12)',
+                  border: `1px solid ${ans?.correct ? 'rgba(82,201,155,0.2)' : 'rgba(224,108,117,0.2)'}`,
+                  borderRadius:8, padding:'8px 12px', fontSize:12
+                }}>
+                  <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:10, color:'var(--text-muted)', marginBottom:2 }}>Q{i+1}</div>
+                  <div style={{ color: ans?.correct ? 'var(--accent-green)' : 'var(--accent-rose)' }}>
+                    {ans?.correct ? '✓' : '✗'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── APP SHELL ─────────────────────────────────────── */
+export default function App() {
+  const [page, setPage] = useState('dashboard');
+  const [courses, setCourses] = useState(COURSES);
+  const [totalXp, setTotalXp] = useState(540);
+  const [quizResults, setQuizResults] = useState(null);
+
+  const enrolled = courses.filter(c=>c.enrolled).length;
+  const overallProgress = Math.round(courses.filter(c=>c.enrolled).reduce((s,c)=>s+c.progress,0)/Math.max(enrolled,1));
+
+  const navItems = [
+    { id:'dashboard', icon:'🏠', label:'Dashboard' },
+    { id:'courses',   icon:'📚', label:'Courses', badge: courses.filter(c=>!c.enrolled).length },
+    { id:'quiz',      icon:'⚡', label:'Knowledge Quiz' },
+  ];
+
+  return (
+    <div className="app-shell">
+      {/* Top bar */}
+      <header className="topbar">
+        <div className="topbar-brand">
+          <div className="brand-icon">📡</div>
+          <div className="brand-name">Edu<span>Pulse</span></div>
+        </div>
+        <div className="topbar-right">
+          <div className="xp-pill">⚡ {totalXp} XP</div>
+          <div className="avatar">RS</div>
+        </div>
+      </header>
+
+      {/* Sidebar */}
+      <nav className="sidebar">
+        <div className="sidebar-section-label">Navigation</div>
+        {navItems.map(item => (
+          <button key={item.id} className={`nav-item ${page===item.id?'active':''}`} onClick={()=>setPage(item.id)}>
+            <span className="nav-icon">{item.icon}</span>
+            {item.label}
+            {item.badge > 0 && <span className="nav-badge">{item.badge}</span>}
+          </button>
+        ))}
+
+        {/* Progress card */}
+        <div className="progress-card">
+          <div className="progress-card-title">Your Progress</div>
+          {[
+            { label:'Courses', val: `${enrolled}/${courses.length}`, pct:(enrolled/courses.length)*100, color:'var(--accent-teal)' },
+            { label:'Avg Score', val:`${overallProgress}%`, pct:overallProgress, color:'var(--accent-amber)' },
+            { label:'Quiz XP', val:`${(quizResults?.score||0)*20}`, pct:((quizResults?.score||0)/5)*100, color:'var(--accent-green)' },
+          ].map(s => (
+            <div key={s.label}>
+              <div className="stat-row">
+                <span className="stat-label">{s.label}</span>
+                <span className="stat-val">{s.val}</span>
+              </div>
+              <div className="stat-bar-wrap">
+                <div className="stat-bar-fill" style={{ width:`${s.pct}%`, background: s.color }} />
+              </div>
+              <div style={{ marginBottom:10 }} />
+            </div>
+          ))}
+
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.8px' }}>Badges</div>
+          <div className="badge-row">
+            {BADGES.map((b,i) => (
+              <span key={i} className={`badge ${b.unlocked?'':'locked'}`} title={b.label}>{b.emoji}</span>
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main */}
+      <main className="main-content">
+        {page === 'dashboard' && <Dashboard courses={courses} totalXp={totalXp} quizResults={quizResults} />}
+        {page === 'courses'   && <CourseLibrary courses={courses} setCourses={setCourses} setTotalXp={setTotalXp} />}
+        {page === 'quiz'      && <QuizEngine setTotalXp={setTotalXp} quizResults={quizResults} setQuizResults={setQuizResults} />}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
