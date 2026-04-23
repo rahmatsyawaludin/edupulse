@@ -501,3 +501,46 @@ function App() {
             ),
             ProgressBar({ pct: Math.min(s.pct, 100), color: s.color }),
             h('div', { style: { marginBottom: 10 } }
+              )
+        ),
+        h('div', { style: { fontSize: 10, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 6 } }, "Badges"),
+        h('div', { className: 'badge-row' },
+          BADGES.map((b, i) =>
+            h('span', {
+              key: i,
+              className: 'badge-item' + (b.unlocked ? '' : ' locked'),
+              title: b.label,
+            }, b.emoji)
+          )
+        )
+      )
+    ),
+
+    /* Main content */
+    h('main', { className: 'main' },
+      page === 'dashboard' && h(Dashboard,     { courses, totalXp, quizResults }),
+      page === 'courses'   && h(CourseLibrary, { courses, setCourses, setTotalXp }),
+      page === 'quiz'      && h(QuizEngine,    { setTotalXp, quizResults, setQuizResults }),
+    ),
+
+    /* Mobile bottom tab bar */
+    h('nav', { className: 'bottom-nav' },
+      navItems.map(item =>
+        h('button', {
+          key: item.id,
+          className: 'bottom-nav-btn' + (page === item.id ? ' active' : ''),
+          onClick: () => setPage(item.id),
+        },
+          h('div', { className: 'bottom-nav-icon-wrap' },
+            h('span', { className: 'bottom-nav-icon' }, item.icon),
+            item.badge > 0 && h('span', { className: 'bottom-nav-badge' }, item.badge)
+          ),
+          h('span', { className: 'bottom-nav-label' }, item.label)
+        )
+      )
+    )
+  );
+}
+
+/* ── Mount ───────────────────────────────────────────────────────── */
+ReactDOM.createRoot(document.getElementById('root')).render(h(App, null));
